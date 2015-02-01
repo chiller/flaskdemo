@@ -19,11 +19,19 @@ user_fields = {
 
 class UserListAPI(Resource):
 
+    @staticmethod
+    def valid_password(value):
+        if len(value) < 8:
+            raise ValueError("Password must be at least 8 characters in length.")
+        return value
+
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
         self.reqparse.add_argument('name', type=str, required=True,
                 help='No user name provided', location='json')
-        self.reqparse.add_argument('password', type=str, required=True, location='json')
+        self.reqparse.add_argument('password',
+                                   type=self.valid_password,
+                                   required=True, location='json')
         self.reqparse.add_argument('email', type=str, default="", location='json')
         super(UserListAPI, self).__init__()
 
@@ -82,7 +90,8 @@ api.add_resource(UserListAPI, '/users', endpoint='users')
 api.add_resource(UserAPI, '/users/<int:id>', endpoint='user')
 
 #TODO: orm
-#TODO: validation
+#TODO: email validation
+#TODO: password validation
 #TODO: test orm
 
 if __name__ == '__main__':

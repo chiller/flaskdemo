@@ -5,15 +5,11 @@ from werkzeug.security import generate_password_hash
 from werkzeug.security import check_password_hash
 
 
-class UserAPITest(unittest.TestCase):
+class UserAPICrudTest(unittest.TestCase):
 
     def setUp(self):
         userflask.app.config['TESTING'] = True
         self.app = userflask.app.test_client()
-
-    def test_hasher(self):
-        phash = generate_password_hash("password")
-        assert check_password_hash(phash, "password")
 
     def test_list(self):
         response = self.app.get('/users')
@@ -26,7 +22,7 @@ class UserAPITest(unittest.TestCase):
         response = self.app.post('/users',
                                  data=json.dumps({"name": "doge",
                                                   "email": "doge@wow.com",
-                                                  "password": "toge"}),
+                                                  "password": "togetoge"}),
                                  content_type='application/json')
         self.assertEquals(response.status_code, 201, response.data)
         assert json.loads(response.data)['uri']
@@ -41,17 +37,17 @@ class UserAPITest(unittest.TestCase):
 
     def test_update(self):
         self.app.put('/users/1',
-                                data=json.dumps({"name": "doge",
-                                                  "email": "doge@wow.com"}),
-                                content_type='application/json')
+                     data=json.dumps({"name": "doge",
+                                      "email": "doge@wow.com"}),
+                     content_type='application/json')
         response = self.app.get('/users/1')
         data = json.loads(response.data)
         self.assertEquals(data['name'], "doge")
 
     def test_patch(self):
         response = self.app.patch('/users/1',
-                                data=json.dumps({"name": "doge"}),
-                                content_type='application/json')
+                                  data=json.dumps({"name": "doge"}),
+                                  content_type='application/json')
         response = self.app.get('/users/1')
         data = json.loads(response.data)
         self.assertEquals(data['name'], "doge")
@@ -62,6 +58,25 @@ class UserAPITest(unittest.TestCase):
         assert response.status_code == 204
         response = self.app.get('/users/2')
         assert response.status_code == 404
+
+
+class UserApiSpecTest(unittest.TestCase):
+    def setUp(self):
+        userflask.app.config['TESTING'] = True
+        self.app = userflask.app.test_client()
+
+    def test_hasher(self):
+        phash = generate_password_hash("password")
+        assert check_password_hash(phash, "password")
+
+    def test_short_password(self):
+        response = self.app.post('/users',
+                                 data=json.dumps({"name": "doge",
+                                                  "email": "doge@wow.com",
+                                                  "password": "toge"}),
+                                 content_type='application/json')
+        self.assertEquals(response.status_code, 400)
+        self.assertEquals(response.data, '{"message": "Password must be at least 8 characters in length."}')
 
 
 if __name__ == '__main__':
