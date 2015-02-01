@@ -31,7 +31,7 @@ class UserAPICrudTest(unittest.TestCase):
     def test_get(self):
         response = self.app.get('/users/1')
         data = json.loads(response.data)
-        assert data['uri']
+        assert data['id']
         assert data['email']
         assert "password" not in data
 
@@ -59,6 +59,10 @@ class UserAPICrudTest(unittest.TestCase):
         response = self.app.get('/users/2')
         assert response.status_code == 404
 
+    def test_head(self):
+        response = self.app.head('/users/1')
+        assert response.status_code == 200
+
 
 class UserApiSpecTest(unittest.TestCase):
     def setUp(self):
@@ -77,6 +81,15 @@ class UserApiSpecTest(unittest.TestCase):
                                  content_type='application/json')
         self.assertEquals(response.status_code, 400)
         self.assertEquals(response.data, '{"message": "Password must be at least 8 characters in length."}')
+
+    def test_bad_email(self):
+        response = self.app.post('/users',
+                                 data=json.dumps({"name": "doge",
+                                                  "email": "wow.com",
+                                                  "password": "togetoge"}),
+                                 content_type='application/json')
+        self.assertEquals(response.status_code, 400)
+        self.assertEquals(response.data, '{"message": "Email is not valid."}')
 
 
 if __name__ == '__main__':

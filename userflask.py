@@ -1,3 +1,4 @@
+import re
 from flask import Flask, jsonify, abort
 from flask.ext.restful import Api, Resource
 from flask.ext.restful import reqparse, marshal, fields
@@ -12,12 +13,20 @@ users = [
     {"id": 2, "name": "user2", "email": "user2@example.com", "password":"dsa"},
 ]
 user_fields = {
+    'id': fields.Integer,
     'name': fields.String,
     'email': fields.String,
     'uri': fields.Url('user')
 }
 
 class UserListAPI(Resource):
+
+    @staticmethod
+    def valid_email(value):
+        pattern = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
+        if not re.match(pattern, value):
+            raise ValueError("Email is not valid.")
+        return value
 
     @staticmethod
     def valid_password(value):
@@ -31,8 +40,12 @@ class UserListAPI(Resource):
                 help='No user name provided', location='json')
         self.reqparse.add_argument('password',
                                    type=self.valid_password,
-                                   required=True, location='json')
-        self.reqparse.add_argument('email', type=str, default="", location='json')
+                                   required=True,
+                                   location='json')
+        self.reqparse.add_argument('email',
+                                   type=self.valid_email,
+                                   required=True,
+                                   location='json')
         super(UserListAPI, self).__init__()
 
 
@@ -90,9 +103,8 @@ api.add_resource(UserListAPI, '/users', endpoint='users')
 api.add_resource(UserAPI, '/users/<int:id>', endpoint='user')
 
 #TODO: orm
-#TODO: email validation
-#TODO: password validation
 #TODO: test orm
+#TODO: update password
 
 if __name__ == '__main__':
     app.run(debug=True)
