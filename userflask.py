@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, abort
 from flask.ext.restful import Api, Resource
 from flask.ext.restful import reqparse, marshal, fields
+from werkzeug.security import generate_password_hash
 
 app = Flask(__name__)
 
@@ -35,7 +36,8 @@ class UserListAPI(Resource):
         user = {
             'id': users[-1]['id'] + 1,
             'name': args['name'],
-            'email': args['email']
+            'email': args['email'],
+            'password': generate_password_hash(args['password'])
         }
         users.append(user)
         return marshal(user, user_fields), 201
@@ -79,6 +81,9 @@ class UserAPI(Resource):
 api.add_resource(UserListAPI, '/users', endpoint='users')
 api.add_resource(UserAPI, '/users/<int:id>', endpoint='user')
 
+#TODO: orm
+#TODO: validation
+#TODO: test orm
 
 if __name__ == '__main__':
     app.run(debug=True)

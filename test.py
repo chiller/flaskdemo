@@ -1,12 +1,19 @@
 from flask import json
 import userflask
 import unittest
+from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash
+
 
 class UserAPITest(unittest.TestCase):
 
     def setUp(self):
         userflask.app.config['TESTING'] = True
         self.app = userflask.app.test_client()
+
+    def test_hasher(self):
+        phash = generate_password_hash("password")
+        assert check_password_hash(phash, "password")
 
     def test_list(self):
         response = self.app.get('/users')
