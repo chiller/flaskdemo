@@ -8,7 +8,7 @@ class UserAPITest(unittest.TestCase):
         userflask.app.config['TESTING'] = True
         self.app = userflask.app.test_client()
 
-    def test_root(self):
+    def test_list(self):
         response = self.app.get('/users')
         data = json.loads(response.data)
         assert response.status_code == 200
@@ -28,19 +28,34 @@ class UserAPITest(unittest.TestCase):
     def test_get(self):
         response = self.app.get('/users/1')
         data = json.loads(response.data)
-        assert data['id']
+        assert data['uri']
         assert data['email']
         assert "password" not in data
 
     def test_update(self):
-        response = self.app.put('/users/1',
-                                 data=json.dumps({"name": "doge"}),
-                                 content_type='application/json')
-        print response.data
+        self.app.put('/users/1',
+                                data=json.dumps({"name": "doge",
+                                                  "email": "doge@wow.com"}),
+                                content_type='application/json')
+        response = self.app.get('/users/1')
+        data = json.loads(response.data)
+        self.assertEquals(data['name'], "doge")
+
+    def test_patch(self):
+        response = self.app.patch('/users/1',
+                                data=json.dumps({"name": "doge"}),
+                                content_type='application/json')
+        response = self.app.get('/users/1')
+        data = json.loads(response.data)
+        self.assertEquals(data['name'], "doge")
+        self.assertEquals(data['email'], "user1@example.com")
 
     def test_delete(self):
-        response = self.app.delete('/users/1')
+        response = self.app.delete('/users/2')
         assert response.status_code == 204
+        response = self.app.get('/users/2')
+        assert response.status_code == 404
+
 
 if __name__ == '__main__':
     unittest.main()
