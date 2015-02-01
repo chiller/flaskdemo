@@ -1,23 +1,46 @@
 import re
-from flask import Flask, jsonify, abort
+from flask.ext.restful import fields, Resource, reqparse, marshal, abort
+from flask.ext.sqlalchemy import SQLAlchemy
+import os
+from flask import Flask
 from flask.ext.restful import Api, Resource
-from flask.ext.restful import reqparse, marshal, fields
 from werkzeug.security import generate_password_hash
+
 
 app = Flask(__name__)
 
-api = Api(app)
 
-users = [
-    {"id": 1, "name": "user1", "email": "user1@example.com", "password":"dsa"},
-    {"id": 2, "name": "user2", "email": "user2@example.com", "password":"dsa"},
-]
+if os.environ.get('TESTING'):
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+
+
+db = SQLAlchemy(app)
+db.create_all()
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=False)
+    email = db.Column(db.String(120), unique=True)
+    password = db.Column(db.String(120), unique=False)
+
+    def __init__(self, name, email, password):
+        self.name = name
+        self.email = email
+        self.password = password
+
+    def __repr__(self):
+        return '<User %r>' % self.name
+
+
 user_fields = {
     'id': fields.Integer,
     'name': fields.String,
     'email': fields.String,
     'uri': fields.Url('user')
 }
+
 
 class UserListAPI(Resource):
 
@@ -50,17 +73,13 @@ class UserListAPI(Resource):
 
 
     def get(self):
-        return [marshal(user, user_fields) for user in users]
+        return [marshal(user, user_fields) for user in User.query.all()]
 
     def post(self):
         args = self.reqparse.parse_args()
-        user = {
-            'id': users[-1]['id'] + 1,
-            'name': args['name'],
-            'email': args['email'],
-            'password': generate_password_hash(args['password'])
-        }
-        users.append(user)
+        user = User(args['name'], args['email'], generate_password_hash(args['password']))
+        db.session.add(user)
+        db.session.commit()
         return marshal(user, user_fields), 201
 
 
@@ -72,7 +91,7 @@ class UserAPI(Resource):
         super(UserAPI, self).__init__()
 
     def get_object_or_404(self, id):
-        user = filter(lambda x: x['id'] == id, users)
+        user = User.query.filter_by(id=id).all()
         if len(user) == 0:
             abort(404)
         return user[0]
@@ -83,28 +102,36 @@ class UserAPI(Resource):
     def put(self, id):
         user = self.get_object_or_404(id)
         args = self.reqparse.parse_args()
-        user['name'] = args['name']
-        user['email'] = args['email']
+        user.name = args['name']
+        user.email = args['email']
+        db.session.add(user)
+        db.session.commit()
         return marshal(user, user_fields), 200
 
     def patch(self, id):
         user = self.get_object_or_404(id)
         args = self.reqparse.parse_args()
-        user['name'] = args.get('name') or user['name']
-        user['email'] = args.get('email') or user['email']
+        user.name = args.get('name') or user.name
+        user.email = args.get('email') or user.email
+        db.session.add(user)
+        db.session.commit()
         return marshal(user, user_fields), 200
 
     def delete(self, id):
-        user = self.get_object_or_404(id)
-        users.remove(user)
+        user = User.query.filter_by(id=id).first()
+        db.session.delete(user)
+        db.session.commit()
         return '', 204
 
-api.add_resource(UserListAPI, '/users', endpoint='users')
-api.add_resource(UserAPI, '/users/<int:id>', endpoint='user')
+def create_api(app):
+    api = Api(app)
+    api.add_resource(UserListAPI, '/users', endpoint='users')
+    api.add_resource(UserAPI, '/users/<int:id>', endpoint='user')
 
-#TODO: orm
-#TODO: test orm
+create_api(app)
+
 #TODO: update password
 
 if __name__ == '__main__':
     app.run(debug=True)
+
