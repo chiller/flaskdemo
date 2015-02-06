@@ -1,5 +1,4 @@
-from userflask import db
-from models import User
+from userflask import db, User
 
 db.create_all()
 
